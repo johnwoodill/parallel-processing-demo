@@ -1,0 +1,4 @@
+*.pem
+*.nc
+*.tif
+.venv/*
