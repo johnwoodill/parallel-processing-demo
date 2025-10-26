@@ -24,20 +24,48 @@ else
     echo "[INFO] R is already installed."
 fi
 
+# If Linux, install system dependencies for terra and ncdf4
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "[STEP 1.5] Installing system dependencies for terra and ncdf4..."
+    sudo apt-get update
+    sudo apt-get install -y \
+        gdal-bin \
+        libgdal-dev \
+        libproj-dev \
+        libgeos-dev \
+        libudunits2-dev \
+        libnetcdf-dev \
+        netcdf-bin
+fi
+
 # Create a user-local library if it doesn't exist
 USER_LIB="$HOME/R/library"
 if [ ! -d "$USER_LIB" ]; then
-    echo "[STEP 1.5] Creating user R library at $USER_LIB..."
+    echo "[STEP 2] Creating user R library at $USER_LIB..."
     mkdir -p "$USER_LIB"
 fi
 
 # Set R_LIBS_USER so packages install there
 export R_LIBS_USER="$USER_LIB"
 
-echo "[STEP 2] Ensuring required R packages are installed..."
+echo "[STEP 3] Ensuring required R packages are installed..."
 for pkg in "${R_PACKAGES[@]}"; do
     echo " - Checking package: $pkg"
-    Rscript -e "if (!requireNamespace('$pkg', quietly = TRUE)) install.packages('$pkg', repos='https://cloud.r-project.org', lib=Sys.getenv('R_LIBS_USER'))"
+    Rscript -e "if (!requireNamespace('$pkg', quietly = TRUE)) { \
+        install.packages('$pkg', repos='https://cloud.r-project.org', lib=Sys.getenv('R_LIBS_USER')) \
+    } else { \
+        cat('[INFO] $pkg already installed\n') \
+    }"
 done
 
-echo "[DONE] All required R packages are installed in $USER_LIB"
+echo "[STEP 4] Verifying installation..."
+for pkg in "${R_PACKAGES[@]}"; do
+    if Rscript -e "library($pkg)" >/dev/null 2>&1; then
+        echo " - $pkg loaded successfully."
+    else
+        echo "[ERROR] Failed to load $pkg after installation."
+        exit 1
+    fi
+done
+
+echo "[DONE] All required R packages are installed and verified in $USER_LIB"
