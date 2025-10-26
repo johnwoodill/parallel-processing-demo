@@ -24,8 +24,20 @@ else
     echo "[INFO] R is already installed."
 fi
 
+# Create a user-local library if it doesn't exist
+USER_LIB="$HOME/R/library"
+if [ ! -d "$USER_LIB" ]; then
+    echo "[STEP 1.5] Creating user R library at $USER_LIB..."
+    mkdir -p "$USER_LIB"
+fi
+
+# Set R_LIBS_USER so packages install there
+export R_LIBS_USER="$USER_LIB"
+
 echo "[STEP 2] Ensuring required R packages are installed..."
 for pkg in "${R_PACKAGES[@]}"; do
     echo " - Checking package: $pkg"
-    Rscript -e "if (!requireNamespace('$pkg', quietly = TRUE)) install.packages('$pkg', repos='https://cloud.r-project.org')"
+    Rscript -e "if (!requireNamespace('$pkg', quietly = TRUE)) install.packages('$pkg', repos='https://cloud.r-project.org', lib=Sys.getenv('R_LIBS_USER'))"
 done
+
+echo "[DONE] All required R packages are installed in $USER_LIB"
