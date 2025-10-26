@@ -1,4 +1,4 @@
 *.pem
 *.nc
 *.tif
-.venv/*
+.venv/*examples/elevation.tif
