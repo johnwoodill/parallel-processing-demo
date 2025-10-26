@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Add uv install location to PATH
+export PATH="$HOME/.local/bin:$PATH"
+
 # Check if uv is installed
 if ! command -v uv >/dev/null 2>&1; then
     echo "[INFO] uv not found. Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.cargo/bin:$PATH"
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # If uv still isn't available, fall back to Python venv + pip
