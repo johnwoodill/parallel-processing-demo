@@ -45,7 +45,13 @@ if [ ! -d "$USER_LIB" ]; then
     mkdir -p "$USER_LIB"
 fi
 
-# Set R_LIBS_USER so packages install there
+# Persist R_LIBS_USER to ~/.Renviron so Rscript always finds it
+if ! grep -q "R_LIBS_USER" "$HOME/.Renviron" 2>/dev/null; then
+    echo "[STEP 2.5] Adding R_LIBS_USER to ~/.Renviron..."
+    echo "R_LIBS_USER=$USER_LIB" >> "$HOME/.Renviron"
+fi
+
+# Set it for this shell session too
 export R_LIBS_USER="$USER_LIB"
 
 echo "[STEP 3] Ensuring required R packages are installed..."
@@ -64,6 +70,7 @@ for pkg in "${R_PACKAGES[@]}"; do
         echo " - $pkg loaded successfully."
     else
         echo "[ERROR] Failed to load $pkg after installation."
+        echo "[HINT] Check .libPaths() in Rscript to verify R_LIBS_USER is set."
         exit 1
     fi
 done
