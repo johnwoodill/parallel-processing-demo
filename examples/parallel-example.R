@@ -107,7 +107,11 @@ main <- function() {
   cat("[DEBUG] Limiting processing to", length(tasks), "tasks\n")
 
   cat("[STEP 4] Computing slope and aspect in parallel...\n")
-  cl <- makeCluster(detectCores())
+  num_cores <- detectCores()
+  cat("[INFO] Detected", num_cores, "cores. Using all for processing.\n")
+
+  cl <- makeCluster(num_cores)
+  cat("[STEP 4] Computing slope and aspect in parallel...\n")
   clusterExport(cl, c("elev", "xres", "yres", "compute_chunk", "process_block"))
   results <- parLapply(cl, tasks, process_block, elev = elev, xres = xres, yres = yres)
   stopCluster(cl)
