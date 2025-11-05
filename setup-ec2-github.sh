@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
-  echo "Usage: $0 'ssh -i <pem_file> <user@host>'"
+  echo "Usage: $0 'ssh -i <pem_file> [extra_ssh_opts] <user@host>'"
   exit 1
 fi
 
@@ -22,8 +22,21 @@ if [ -z "$EC2_HOST" ]; then
   exit 1
 fi
 
+# Extract extra SSH options (everything except ssh, -i, pem file, and host)
+EXTRA_OPTS=$(echo "$SSH_CMD" | awk -v pem="$PEM_FILE" -v host="$EC2_HOST" '
+{
+  out = "";
+  for (i = 1; i <= NF; i++) {
+    if ($i != "ssh" && $i != "-i" && $i != pem && $i != host) {
+      out = out " " $i;
+    }
+  }
+  print out;
+}')
+
 echo "[INFO] PEM file: $PEM_FILE"
 echo "[INFO] EC2 host: $EC2_HOST"
+echo "[INFO] Extra SSH options:$EXTRA_OPTS"
 
 # Deploy GitHub SSH key
 LOCAL_KEY_PATH="$HOME/.ssh/github"
@@ -37,21 +50,24 @@ fi
 echo "[STEP] Setting PEM file permissions..."
 chmod 400 "$PEM_FILE"
 
+SSH_BASE="ssh $EXTRA_OPTS -i $PEM_FILE -o StrictHostKeyChecking=yes"
+SCP_BASE="scp $EXTRA_OPTS -i $PEM_FILE -o StrictHostKeyChecking=yes"
+
 echo "[STEP] Ensuring ~/.ssh on remote..."
-ssh -i "$PEM_FILE" -o StrictHostKeyChecking=no "$EC2_HOST" "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
+$SSH_BASE "$EC2_HOST" "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
 
 echo "[STEP] Copying GitHub key..."
-scp -i "$PEM_FILE" -o StrictHostKeyChecking=no "$LOCAL_KEY_PATH" "$EC2_HOST:$REMOTE_KEY_PATH"
+$SCP_BASE "$LOCAL_KEY_PATH" "$EC2_HOST:$REMOTE_KEY_PATH"
 
 echo "[STEP] Configuring remote SSH for GitHub..."
-ssh -i "$PEM_FILE" -o StrictHostKeyChecking=no "$EC2_HOST" <<'EOF'
+$SSH_BASE "$EC2_HOST" <<'EOF'
 chmod 600 ~/.ssh/github
 if ! grep -q "Host github.com" ~/.ssh/config 2>/dev/null; then
   cat <<CONFIG >> ~/.ssh/config
 Host github.com
   HostName github.com
   IdentityFile ~/.ssh/github
-  StrictHostKeyChecking no
+  StrictHostKeyChecking yes
 CONFIG
 fi
 eval "$(ssh-agent -s)" >/dev/null 2>&1
